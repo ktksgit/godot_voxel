@@ -21,10 +21,10 @@ private:
     struct Channel {
         // Allocated when the channel is populated.
         // Flat array, in order [z][x][y] because it allows faster vertical-wise access (the engine is Y-up).
-        uint8_t * data;
+        uint16_t * data;
 
         // Default value when data is null
-        uint8_t defval;
+        uint16_t defval;
         
         Channel() : data(NULL), defval(0) {}
     };
@@ -82,7 +82,7 @@ public:
 
 private:
     void create_channel_noinit(int i, Vector3i size);
-    void create_channel(int i, Vector3i size, uint8_t defval=0);
+    void create_channel(int i, Vector3i size, uint16_t defval=0);
     void delete_channel(int i, Vector3i size);
 
 protected:

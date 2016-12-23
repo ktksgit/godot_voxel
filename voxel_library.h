@@ -8,7 +8,7 @@ class VoxelLibrary : public Reference {
     OBJ_TYPE(VoxelLibrary, Reference)
 
 public:
-    static const unsigned int MAX_VOXEL_TYPES = 256; // Required limit because voxel types are stored in 8 bits
+    static const unsigned int MAX_VOXEL_TYPES = 65536; // Required limit because voxel types are stored in 8 bits
 
     VoxelLibrary();
     ~VoxelLibrary();

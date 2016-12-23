@@ -41,7 +41,7 @@ class VoxelMap : public Reference {
     OBJ_TYPE(VoxelMap, Reference)
 
     // Voxel values that will be returned if access is out of map bounds
-    uint8_t _default_voxel[VoxelBuffer::MAX_CHANNELS];
+    uint16_t _default_voxel[VoxelBuffer::MAX_CHANNELS];
 
     // Blocks stored with a spatial hash in all 3D directions
     HashMap<Vector3i, Ref<VoxelBlock>, Vector3iHasher> _blocks;
@@ -128,7 +128,7 @@ private:
 //    const int SIZE = 1 << P;
 //    const int VOLUME = P*P*P;
 //
-//    uint8_t get_voxel(int x, int y, int z) {
+//    uint16_t get_voxel(int x, int y, int z) {
 //        unsigned int i = index(x / SIZE, y / SIZE, z / SIZE);
 //        ERR_FAIL_COND_V(i >= VOLUME, 0);
 //        if (subtrees) {
