@@ -2,6 +2,7 @@
 #define VOXEL_TYPE_H
 
 #include <reference.h>
+#include <scene/resources/mesh.h>
 
 class VoxelLibrary;
 
@@ -69,6 +70,7 @@ public:
     Ref<Voxel> set_cube_geometry(float sy = 1);
     Ref<Voxel> set_cube_uv_all_sides(Vector2 atlas_pos);
     Ref<Voxel> set_cube_uv_tbs_sides(Vector2 top_atlas_pos, Vector2 side_atlas_pos, Vector2 bottom_atlas_pos);
+    Ref<Voxel> set_cube_geometry_from_mesh(Ref<Mesh> mesh);
     //Ref<Voxel> set_xquad_geometry(Vector2 atlas_pos);
 
     // Getters for native usage only
