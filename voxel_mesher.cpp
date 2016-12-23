@@ -150,8 +150,8 @@ void VoxelMesher::set_occlusion_enabled(bool enable) {
 inline Color Color_greyscale(float c) { return Color(c, c, c); }
 
 inline bool is_face_visible(const VoxelLibrary & lib, const Voxel & vt, int other_voxel_id) {
-    if (other_voxel_id == 0) // air
-        return true;
+    //if (other_voxel_id == 0) // air
+    //    return true;
     if (lib.has_voxel(other_voxel_id)) {
         const Voxel & other_vt = lib.get_voxel_const(other_voxel_id);
         return other_vt.is_transparent() && vt.get_id() != other_voxel_id;
@@ -200,7 +200,7 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
 
                 int voxel_id = buffer.get_voxel(x, y, z, 0);
 
-                if (voxel_id != 0 && library.has_voxel(voxel_id)) {
+                if (library.has_voxel(voxel_id)) {
 
                     const Voxel & voxel = library.get_voxel_const(voxel_id);
 
