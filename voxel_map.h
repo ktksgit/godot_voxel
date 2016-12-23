@@ -110,7 +110,8 @@ private:
     bool _is_block_surrounded(Vector3 pos) const { return is_block_surrounded(Vector3i(pos)); }
     void _get_buffer_copy_binding(Vector3 pos, Ref<VoxelBuffer> dst_buffer_ref, unsigned int channel = 0);
     void _set_block_buffer_binding(Vector3 bpos, Ref<VoxelBuffer> buffer) { set_block_buffer(Vector3i(bpos), buffer); }
-
+    MeshInstance *_get_block_mesh_instance_binding(Vector3 bpos, Node * root);
+    void _set_block_mesh_instance_binding(Vector3 bpos, Node * mesh_instance);
 };
 
 //class VoxelSector {

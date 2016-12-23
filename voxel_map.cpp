@@ -212,6 +212,26 @@ void VoxelMap::remove_blocks_not_in_area(Vector3i min, Vector3i max) {
     }
 }
 
+MeshInstance *VoxelMap::_get_block_mesh_instance_binding(Vector3 bpos, Node * root) {
+	VoxelBlock* block = get_block(Vector3i(bpos));
+	ERR_FAIL_COND_V(!block, NULL);
+
+	return block->get_mesh_instance(*root);
+}
+
+void VoxelMap::_set_block_mesh_instance_binding(Vector3 bpos, Node * node) {
+	ERR_FAIL_NULL(node);
+	MeshInstance * mesh_instance = node->cast_to<MeshInstance>();
+	VoxelBlock* block = get_block(Vector3i(bpos));
+
+    if (block == NULL) {
+        block = VoxelBlock::create(*this, Vector3i(bpos));
+        set_block(bpos, block);
+    }
+
+	block->mesh_instance_path = mesh_instance->get_path();
+}
+
 void VoxelMap::_bind_methods() {
 
     ObjectTypeDB::bind_method(_MD("get_voxel", "vector:Vector3", "channel:int"), &VoxelMap::_get_voxel_binding, DEFVAL(0));
@@ -224,6 +244,8 @@ void VoxelMap::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("voxel_to_block", "voxel_pos"), &VoxelMap::_voxel_to_block_binding);
     ObjectTypeDB::bind_method(_MD("block_to_voxel", "block_pos"), &VoxelMap::_block_to_voxel_binding);
     ObjectTypeDB::bind_method(_MD("get_block_size"), &VoxelMap::get_block_size);
+	ObjectTypeDB::bind_method(_MD("get_block_mesh_instance:MeshInstance","block_pos:Vector3", "root:Node"),&VoxelMap::_get_block_mesh_instance_binding);
+	ObjectTypeDB::bind_method(_MD("set_block_mesh_instance","block_pos:Vector3", "mesh_instance:MeshInstance"),&VoxelMap::_set_block_mesh_instance_binding);
 
     //ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations"), _SCS("set_iterations"), _SCS("get_iterations"));
 
