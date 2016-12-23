@@ -6,6 +6,7 @@ Voxel::Voxel() : Reference(),
     _id(-1), 
     _material_id(0), 
     _is_transparent(false), 
+	_hidden_faces(0),
     _library(NULL), 
     _color(1.f, 1.f, 1.f)
 {}
@@ -24,6 +25,13 @@ Ref<Voxel> Voxel::set_material_id(unsigned int id) {
     ERR_FAIL_COND_V(id >= VoxelMesher::MAX_MATERIALS, Ref<Voxel>(this));
     _material_id = id;
     return Ref<Voxel>(this);
+}
+
+void Voxel::hide_faces(Array faces) {
+	for (int i = 0; i < faces.size(); i++) {
+		int face = faces[i];
+		_hidden_faces |= 1 << face;
+	}
 }
 
 Ref<Voxel> Voxel::set_cube_geometry(float sy) {
@@ -241,10 +249,18 @@ void Voxel::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("set_material_id", "id"), &Voxel::set_material_id);
     ObjectTypeDB::bind_method(_MD("get_material_id"), &Voxel::get_material_id);
 
+    ObjectTypeDB::bind_method(_MD("hide_faces", "faces:Array"), &Voxel::hide_faces);
+
     ObjectTypeDB::bind_method(_MD("set_cube_geometry:Voxel", "height"), &Voxel::set_cube_geometry, DEFVAL(1.f));
     ObjectTypeDB::bind_method(_MD("set_cube_uv_all_sides:Voxel", "atlas_pos"), &Voxel::set_cube_uv_all_sides);
     ObjectTypeDB::bind_method(_MD("set_cube_uv_tbs_sides:Voxel", "top_atlas_pos", "side_atlas_pos", "bottom_atlas_pos"), &Voxel::set_cube_uv_tbs_sides);
     ObjectTypeDB::bind_method(_MD("set_cube_geometry_from_mesh:Voxel", "mesh:Mesh"), &Voxel::set_cube_geometry_from_mesh);
 
+    BIND_CONSTANT(SIDE_LEFT);
+    BIND_CONSTANT(SIDE_RIGHT);
+    BIND_CONSTANT(SIDE_BOTTOM);
+    BIND_CONSTANT(SIDE_TOP);
+    BIND_CONSTANT(SIDE_BACK);
+    BIND_CONSTANT(SIDE_FRONT);
 }
 

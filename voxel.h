@@ -24,6 +24,14 @@ public:
         SIDE_COUNT
     };
 
+    static unsigned int opposite(unsigned int side) {
+    	if(side & 1) {
+    		return side - 1;
+    	} else {
+    		return side + 1;
+    	}
+    }
+
 private:
     VoxelLibrary * _library;
 
@@ -33,7 +41,9 @@ private:
 
     // Properties
     int _material_id;
+
     bool _is_transparent;
+    uint8_t _hidden_faces;
 
     // Model
     Color _color;
@@ -64,6 +74,9 @@ public:
 
     _FORCE_INLINE_ Ref<Voxel> set_transparent(bool t = true) { _is_transparent = t; return Ref<Voxel>(this); }
     _FORCE_INLINE_ bool is_transparent() const { return _is_transparent; }
+
+    void hide_faces(Array faces);
+    _FORCE_INLINE_ bool is_face_visible(int face) const { return !(_hidden_faces & (1 << face));}
 
     // Built-in geometry generators
 
