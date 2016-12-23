@@ -32,8 +32,8 @@ public:
     
     void set_occlusion_enabled(bool enable);
 
-    Ref<Mesh> build(const VoxelBuffer & buffer_ref);
-    Ref<Mesh> build_ref(Ref<VoxelBuffer> buffer_ref);
+    Ref<Mesh> build(const VoxelBuffer & buffer_ref, unsigned int channel_number);
+    Ref<Mesh> build_ref(Ref<VoxelBuffer> buffer_ref, unsigned int channel_number);
     
 protected:
 

@@ -165,12 +165,12 @@ inline bool is_transparent(const VoxelLibrary & lib, int voxel_id) {
     return true;
 }
 
-Ref<Mesh> VoxelMesher::build_ref(Ref<VoxelBuffer> buffer_ref) {
+Ref<Mesh> VoxelMesher::build_ref(Ref<VoxelBuffer> buffer_ref, unsigned int channel_number) {
     ERR_FAIL_COND_V(buffer_ref.is_null(), Ref<Mesh>());
-    return build(**buffer_ref);
+    return build(**buffer_ref, channel_number);
 }
 
-Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
+Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer, unsigned int channel_number) {
     ERR_FAIL_COND_V(_library.is_null(), Ref<Mesh>());
 
     const VoxelLibrary & library = **_library;
@@ -198,7 +198,7 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
         for (unsigned int x = 1; x < buffer_size.x-1; ++x) {
             for (unsigned int y = 1; y < buffer_size.y-1; ++y) {
 
-                int voxel_id = buffer.get_voxel(x, y, z, 0);
+                int voxel_id = buffer.get_voxel(x, y, z, channel_number);
 
                 if (library.has_voxel(voxel_id)) {
 
@@ -220,7 +220,7 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
                             unsigned ny = y + normal.y;
                             unsigned nz = z + normal.z;
 
-                            int neighbor_voxel_id = buffer.get_voxel(nx, ny, nz, 0);
+                            int neighbor_voxel_id = buffer.get_voxel(nx, ny, nz, channel_number);
                             // TODO Better face visibility test
                             if (is_face_visible(library, voxel, neighbor_voxel_id)) {
 
@@ -342,6 +342,6 @@ void VoxelMesher::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("set_library", "voxel_library"), &VoxelMesher::set_library);
     ObjectTypeDB::bind_method(_MD("set_occlusion_enabled", "enable"), &VoxelMesher::set_occlusion_enabled);
     ObjectTypeDB::bind_method(_MD("set_occlusion_darkness", "value"), &VoxelMesher::set_occlusion_darkness);
-    ObjectTypeDB::bind_method(_MD("build", "voxel_buffer"), &VoxelMesher::build_ref);
+    ObjectTypeDB::bind_method(_MD("build", "voxel_buffer:VoxelBuffer", "channel_number:int"), &VoxelMesher::build_ref);
 
 }
