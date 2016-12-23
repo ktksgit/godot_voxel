@@ -102,9 +102,9 @@ private:
 
     static void _bind_methods();
 
-    _FORCE_INLINE_ int _get_voxel_binding(int x, int y, int z, unsigned int c = 0) { return get_voxel(Vector3i(x, y, z), c); }
-    _FORCE_INLINE_ void _set_voxel_binding(int value, int x, int y, int z, unsigned int c = 0) { set_voxel(value, Vector3i(x, y, z), c); }
-    _FORCE_INLINE_ bool _has_block_binding(int x, int y, int z) { return has_block(Vector3i(x, y, z)); }
+    _FORCE_INLINE_ int _get_voxel_binding(Vector3 v, unsigned int c = 0) { return get_voxel(Vector3i(v), c); }
+    _FORCE_INLINE_ void _set_voxel_binding(int value, Vector3 v, unsigned int c = 0) { set_voxel(value, Vector3i(v), c); }
+    _FORCE_INLINE_ bool _has_block_binding(Vector3 v) { return has_block(Vector3i(v)); }
     _FORCE_INLINE_ Vector3 _voxel_to_block_binding(Vector3 pos) const { return voxel_to_block(Vector3i(pos)).to_vec3(); }
     _FORCE_INLINE_ Vector3 _block_to_voxel_binding(Vector3 pos) const { return block_to_voxel(Vector3i(pos)).to_vec3(); }
     bool _is_block_surrounded(Vector3 pos) const { return is_block_surrounded(Vector3i(pos)); }

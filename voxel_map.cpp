@@ -214,11 +214,11 @@ void VoxelMap::remove_blocks_not_in_area(Vector3i min, Vector3i max) {
 
 void VoxelMap::_bind_methods() {
 
-    ObjectTypeDB::bind_method(_MD("get_voxel", "x", "y", "z", "c"), &VoxelMap::_get_voxel_binding, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("set_voxel", "value", "x", "y", "z", "c"), &VoxelMap::_set_voxel_binding, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("get_voxel", "vector:Vector3", "channel:int"), &VoxelMap::_get_voxel_binding, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("set_voxel", "value:int", "vector:Vector3", "channel:int"), &VoxelMap::_set_voxel_binding, DEFVAL(0));
     ObjectTypeDB::bind_method(_MD("get_default_voxel", "channel"), &VoxelMap::get_default_voxel, DEFVAL(0));
     ObjectTypeDB::bind_method(_MD("set_default_voxel", "value", "channel"), &VoxelMap::set_default_voxel, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("has_block", "x", "y", "z"), &VoxelMap::_has_block_binding);
+    ObjectTypeDB::bind_method(_MD("has_block", "vector:Vector3"), &VoxelMap::_has_block_binding);
     ObjectTypeDB::bind_method(_MD("get_buffer_copy", "min_pos", "out_buffer:VoxelBuffer", "channel"), &VoxelMap::_get_buffer_copy_binding, DEFVAL(0));
     ObjectTypeDB::bind_method(_MD("set_block_buffer", "block_pos", "buffer:VoxelBuffer"), &VoxelMap::_set_block_buffer_binding);
     ObjectTypeDB::bind_method(_MD("voxel_to_block", "voxel_pos"), &VoxelMap::_voxel_to_block_binding);
