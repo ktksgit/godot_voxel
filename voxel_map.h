@@ -4,6 +4,7 @@
 #include <scene/main/node.h>
 #include <core/hash_map.h>
 #include <scene/3d/mesh_instance.h>
+#include <scene/3d/navigation_mesh.h>
 #include "voxel_buffer.h"
 
 class VoxelMap;
@@ -112,6 +113,7 @@ private:
     void _set_block_buffer_binding(Vector3 bpos, Ref<VoxelBuffer> buffer) { set_block_buffer(Vector3i(bpos), buffer); }
     MeshInstance *_get_block_mesh_instance_binding(Vector3 bpos, Node * root);
     void _set_block_mesh_instance_binding(Vector3 bpos, Node * mesh_instance);
+    Ref<NavigationMesh> _create_navigation_mesh_binding(Ref<Mesh> mesh);
 };
 
 //class VoxelSector {

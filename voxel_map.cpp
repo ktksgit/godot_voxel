@@ -232,6 +232,14 @@ void VoxelMap::_set_block_mesh_instance_binding(Vector3 bpos, Node * node) {
 	block->mesh_instance_path = mesh_instance->get_path();
 }
 
+Ref<NavigationMesh> VoxelMap::_create_navigation_mesh_binding(Ref<Mesh> mesh) {
+	ERR_FAIL_COND_V(mesh.is_null(), Ref<NavigationMesh>());
+
+	Ref<NavigationMesh> navigation_mesh = Ref<NavigationMesh>(memnew(NavigationMesh));
+	navigation_mesh->create_from_mesh(mesh);
+	return navigation_mesh;
+}
+
 void VoxelMap::_bind_methods() {
 
     ObjectTypeDB::bind_method(_MD("get_voxel", "vector:Vector3", "channel:int"), &VoxelMap::_get_voxel_binding, DEFVAL(0));
@@ -246,6 +254,7 @@ void VoxelMap::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("get_block_size"), &VoxelMap::get_block_size);
 	ObjectTypeDB::bind_method(_MD("get_block_mesh_instance:MeshInstance","block_pos:Vector3", "root:Node"),&VoxelMap::_get_block_mesh_instance_binding);
 	ObjectTypeDB::bind_method(_MD("set_block_mesh_instance","block_pos:Vector3", "mesh_instance:MeshInstance"),&VoxelMap::_set_block_mesh_instance_binding);
+	ObjectTypeDB::bind_method(_MD("create_navigation_mesh","mesh:Mesh"),&VoxelMap::_create_navigation_mesh_binding);
 
     //ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations"), _SCS("set_iterations"), _SCS("get_iterations"));
 
