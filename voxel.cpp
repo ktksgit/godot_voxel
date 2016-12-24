@@ -27,11 +27,13 @@ Ref<Voxel> Voxel::set_material_id(unsigned int id) {
     return Ref<Voxel>(this);
 }
 
-void Voxel::hide_faces(Array faces) {
+Ref<Voxel> Voxel::hide_faces(Array faces) {
 	for (int i = 0; i < faces.size(); i++) {
 		int face = faces[i];
 		_hidden_faces |= 1 << face;
 	}
+
+	return Ref<Voxel>(this);
 }
 
 Ref<Voxel> Voxel::set_cube_geometry(float sy) {
@@ -250,6 +252,7 @@ void Voxel::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("get_material_id"), &Voxel::get_material_id);
 
     ObjectTypeDB::bind_method(_MD("hide_faces", "faces:Array"), &Voxel::hide_faces);
+    ObjectTypeDB::bind_method(_MD("is_face_visible", "face:int"), &Voxel::is_face_visible);
 
     ObjectTypeDB::bind_method(_MD("set_cube_geometry:Voxel", "height"), &Voxel::set_cube_geometry, DEFVAL(1.f));
     ObjectTypeDB::bind_method(_MD("set_cube_uv_all_sides:Voxel", "atlas_pos"), &Voxel::set_cube_uv_all_sides);

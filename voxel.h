@@ -75,7 +75,7 @@ public:
     _FORCE_INLINE_ Ref<Voxel> set_transparent(bool t = true) { _is_transparent = t; return Ref<Voxel>(this); }
     _FORCE_INLINE_ bool is_transparent() const { return _is_transparent; }
 
-    void hide_faces(Array faces);
+    Ref<Voxel> hide_faces(Array faces);
     _FORCE_INLINE_ bool is_face_visible(int face) const { return !(_hidden_faces & (1 << face));}
 
     // Built-in geometry generators
