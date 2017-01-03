@@ -95,10 +95,10 @@ public:
 
     //void set_observer(IVoxelMapObserver * observer) { _observer = observer; }
 
-private:
+
     VoxelBlock * get_block(Vector3i bpos);
     void set_block(Vector3i bpos, VoxelBlock * block);
-
+private:
     _FORCE_INLINE_ int get_block_size() const { return VoxelBlock::SIZE; }
 
     static void _bind_methods();
