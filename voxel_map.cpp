@@ -212,18 +212,49 @@ void VoxelMap::remove_blocks_not_in_area(Vector3i min, Vector3i max) {
 	}
 }
 
+MeshInstance *VoxelMap::_get_block_mesh_instance_binding(Vector3 bpos, Node * root) {
+	VoxelBlock* block = get_block(Vector3i(bpos));
+	ERR_FAIL_COND_V(!block, NULL);
+
+	return block->get_mesh_instance(*root);
+}
+
+void VoxelMap::_set_block_mesh_instance_binding(Vector3 bpos, Node * node) {
+	ERR_FAIL_NULL(node);
+	MeshInstance * mesh_instance = node->cast_to<MeshInstance>();
+	VoxelBlock* block = get_block(Vector3i(bpos));
+
+    if (block == NULL) {
+        block = VoxelBlock::create(Vector3i(bpos));
+        set_block(bpos, block);
+    }
+
+	block->mesh_instance_path = mesh_instance->get_path();
+}
+
+Ref<NavigationMesh> VoxelMap::_create_navigation_mesh_binding(Ref<Mesh> mesh) {
+	ERR_FAIL_COND_V(mesh.is_null(), Ref<NavigationMesh>());
+
+	Ref<NavigationMesh> navigation_mesh = Ref<NavigationMesh>(memnew(NavigationMesh));
+	navigation_mesh->create_from_mesh(mesh);
+	return navigation_mesh;
+}
+
 void VoxelMap::_bind_methods() {
 
-	ObjectTypeDB::bind_method(_MD("get_voxel", "x", "y", "z", "c"), &VoxelMap::_get_voxel_binding, DEFVAL(0));
-	ObjectTypeDB::bind_method(_MD("set_voxel", "value", "x", "y", "z", "c"), &VoxelMap::_set_voxel_binding, DEFVAL(0));
-	ObjectTypeDB::bind_method(_MD("get_default_voxel", "channel"), &VoxelMap::get_default_voxel, DEFVAL(0));
-	ObjectTypeDB::bind_method(_MD("set_default_voxel", "value", "channel"), &VoxelMap::set_default_voxel, DEFVAL(0));
-	ObjectTypeDB::bind_method(_MD("has_block", "x", "y", "z"), &VoxelMap::_has_block_binding);
-	ObjectTypeDB::bind_method(_MD("get_buffer_copy", "min_pos", "out_buffer:VoxelBuffer", "channel"), &VoxelMap::_get_buffer_copy_binding, DEFVAL(0));
-	ObjectTypeDB::bind_method(_MD("set_block_buffer", "block_pos", "buffer:VoxelBuffer"), &VoxelMap::_set_block_buffer_binding);
-	ObjectTypeDB::bind_method(_MD("voxel_to_block", "voxel_pos"), &VoxelMap::_voxel_to_block_binding);
-	ObjectTypeDB::bind_method(_MD("block_to_voxel", "block_pos"), &VoxelMap::_block_to_voxel_binding);
-	ObjectTypeDB::bind_method(_MD("get_block_size"), &VoxelMap::get_block_size);
+	ObjectTypeDB::bind_method(_MD("get_voxel", "vector:Vector3", "channel:int"), &VoxelMap::_get_voxel_binding, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("set_voxel", "value:int", "vector:Vector3", "channel:int"), &VoxelMap::_set_voxel_binding, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("get_default_voxel", "channel"), &VoxelMap::get_default_voxel, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("set_default_voxel", "value", "channel"), &VoxelMap::set_default_voxel, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("has_block", "vector:Vector3"), &VoxelMap::_has_block_binding);
+    ObjectTypeDB::bind_method(_MD("get_buffer_copy", "min_pos", "out_buffer:VoxelBuffer", "channel"), &VoxelMap::_get_buffer_copy_binding, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("set_block_buffer", "block_pos", "buffer:VoxelBuffer"), &VoxelMap::_set_block_buffer_binding);
+    ObjectTypeDB::bind_method(_MD("voxel_to_block", "voxel_pos"), &VoxelMap::_voxel_to_block_binding);
+    ObjectTypeDB::bind_method(_MD("block_to_voxel", "block_pos"), &VoxelMap::_block_to_voxel_binding);
+    ObjectTypeDB::bind_method(_MD("get_block_size"), &VoxelMap::get_block_size);
+	ObjectTypeDB::bind_method(_MD("get_block_mesh_instance:MeshInstance","block_pos:Vector3", "root:Node"),&VoxelMap::_get_block_mesh_instance_binding);
+	ObjectTypeDB::bind_method(_MD("set_block_mesh_instance","block_pos:Vector3", "mesh_instance:MeshInstance"),&VoxelMap::_set_block_mesh_instance_binding);
+	ObjectTypeDB::bind_method(_MD("create_navigation_mesh","mesh:Mesh"),&VoxelMap::_create_navigation_mesh_binding);
 
 	//ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations"), _SCS("set_iterations"), _SCS("get_iterations"));
 

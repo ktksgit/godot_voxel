@@ -4,6 +4,7 @@
 #include <scene/main/node.h>
 #include <core/hash_map.h>
 #include <scene/3d/mesh_instance.h>
+#include <scene/3d/navigation_mesh.h>
 #include "voxel_buffer.h"
 
 class VoxelMap;
@@ -81,26 +82,29 @@ public:
 
 	//void set_observer(IVoxelMapObserver * observer) { _observer = observer; }
 
-private:
+
 	VoxelBlock * get_block(Vector3i bpos);
 	void set_block(Vector3i bpos, VoxelBlock * block);
-
+private:
 	_FORCE_INLINE_ int get_block_size() const { return VoxelBlock::SIZE; }
 
 	static void _bind_methods();
 
-	_FORCE_INLINE_ int _get_voxel_binding(int x, int y, int z, unsigned int c = 0) { return get_voxel(Vector3i(x, y, z), c); }
-	_FORCE_INLINE_ void _set_voxel_binding(int value, int x, int y, int z, unsigned int c = 0) { set_voxel(value, Vector3i(x, y, z), c); }
-	_FORCE_INLINE_ bool _has_block_binding(int x, int y, int z) { return has_block(Vector3i(x, y, z)); }
+	_FORCE_INLINE_ int _get_voxel_binding(Vector3 v, unsigned int c = 0) { return get_voxel(Vector3i(v), c); }
+	_FORCE_INLINE_ void _set_voxel_binding(int value, Vector3 v, unsigned int c = 0) { set_voxel(value, Vector3i(v), c); }
+	_FORCE_INLINE_ bool _has_block_binding(Vector3 v) { return has_block(Vector3i(v)); }
 	_FORCE_INLINE_ Vector3 _voxel_to_block_binding(Vector3 pos) const { return voxel_to_block(Vector3i(pos)).to_vec3(); }
 	_FORCE_INLINE_ Vector3 _block_to_voxel_binding(Vector3 pos) const { return block_to_voxel(Vector3i(pos)).to_vec3(); }
 	bool _is_block_surrounded(Vector3 pos) const { return is_block_surrounded(Vector3i(pos)); }
 	void _get_buffer_copy_binding(Vector3 pos, Ref<VoxelBuffer> dst_buffer_ref, unsigned int channel = 0);
 	void _set_block_buffer_binding(Vector3 bpos, Ref<VoxelBuffer> buffer) { set_block_buffer(Vector3i(bpos), buffer); }
+	MeshInstance *_get_block_mesh_instance_binding(Vector3 bpos, Node * root);
+	void _set_block_mesh_instance_binding(Vector3 bpos, Node * mesh_instance);
+	Ref<NavigationMesh> _create_navigation_mesh_binding(Ref<Mesh> mesh);
 
 private:
 	// Voxel values that will be returned if access is out of map bounds
-	uint8_t _default_voxel[VoxelBuffer::MAX_CHANNELS];
+	uint16_t _default_voxel[VoxelBuffer::MAX_CHANNELS];
 
 	// Blocks stored with a spatial hash in all 3D directions
 	HashMap<Vector3i, Ref<VoxelBlock>, Vector3iHasher> _blocks;
@@ -109,7 +113,6 @@ private:
 	// To prevent too much hashing, this reference is checked before.
 	VoxelBlock * _last_accessed_block;
 
-	//IVoxelMapObserver * _observer;
 };
 
 //class VoxelSector {
@@ -126,7 +129,7 @@ private:
 //    const int SIZE = 1 << P;
 //    const int VOLUME = P*P*P;
 //
-//    uint8_t get_voxel(int x, int y, int z) {
+//    uint16_t get_voxel(int x, int y, int z) {
 //        unsigned int i = index(x / SIZE, y / SIZE, z / SIZE);
 //        ERR_FAIL_COND_V(i >= VOLUME, 0);
 //        if (subtrees) {

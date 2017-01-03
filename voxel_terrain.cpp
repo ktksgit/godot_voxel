@@ -159,7 +159,7 @@ void VoxelTerrain::update_block_mesh(Vector3i block_pos) {
 	//}
 
 	// Build mesh (that part is the most CPU-intensive)
-	Ref<Mesh> mesh = _mesher->build(nbuffer);
+	Ref<Mesh> mesh = _mesher->build(nbuffer, 0);
 
 	MeshInstance * mesh_instance = block_ref->get_mesh_instance(*this);
 	if (mesh_instance == NULL) {

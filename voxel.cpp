@@ -6,6 +6,7 @@ Voxel::Voxel() : Reference(),
 	_id(-1),
 	_material_id(0),
 	_is_transparent(false),
+	_hidden_faces(0),
 	_library(NULL),
 	_color(1.f, 1.f, 1.f)
 {}
@@ -16,7 +17,7 @@ Ref<Voxel> Voxel::set_name(String name) {
 }
 
 Ref<Voxel> Voxel::set_id(int id) {
-	ERR_FAIL_COND_V(id < 0 || id >= 256, Ref<Voxel>(this));
+	ERR_FAIL_COND_V(id < 0 || id >= 65536, Ref<Voxel>(this));
 	// Cannot modify ID after creation
 	ERR_FAIL_COND_V(_id != -1, Ref<Voxel>(this));
 	_id = id;
@@ -36,6 +37,15 @@ Ref<Voxel> Voxel::set_material_id(unsigned int id) {
 
 Ref<Voxel> Voxel::set_transparent(bool t) {
 	_is_transparent = t;
+	return Ref<Voxel>(this);
+}
+
+Ref<Voxel> Voxel::hide_faces(Array faces) {
+	for (int i = 0; i < faces.size(); i++) {
+		int face = faces[i];
+		_hidden_faces |= 1 << face;
+	}
+
 	return Ref<Voxel>(this);
 }
 
@@ -171,6 +181,67 @@ Ref<Voxel> Voxel::set_cube_uv_tbs_sides(Vector2 top_atlas_pos, Vector2 side_atla
 	return _set_cube_uv_sides(positions);
 }
 
+Ref<Voxel> Voxel::set_cube_geometry_from_mesh(Ref<Mesh> mesh) {
+	ERR_FAIL_COND_V(mesh.is_null(), Ref<Voxel>());
+
+	int surfaceIdx = 0;
+	ERR_FAIL_COND_V(mesh->surface_get_primitive_type(surfaceIdx) != Mesh::PRIMITIVE_TRIANGLES, Ref<Voxel>());
+
+	Array a = mesh->surface_get_arrays(surfaceIdx);
+
+	int vc = mesh->surface_get_array_len(surfaceIdx);
+	DVector<Vector3> vertices = a[Mesh::ARRAY_VERTEX];
+	DVector<Vector3>::Read vr=vertices.read();
+
+	DVector<Vector2> uvtex = a[Mesh::ARRAY_TEX_UV];
+	DVector<Vector2>::Read uvtexr = uvtex.read();
+
+	DVector<Vector3> normals = a[Mesh::ARRAY_NORMAL];
+	DVector<Vector3>::Read normalsr = normals.read();
+
+	int facecount = 0;
+	if (mesh->surface_get_format(surfaceIdx)&Mesh::ARRAY_FORMAT_INDEX) {
+		facecount=mesh->surface_get_array_index_len(surfaceIdx);
+	} else {
+		facecount = mesh->surface_get_array_len(surfaceIdx);
+	}
+
+	 _model_vertices.resize(facecount);
+	DVector<Vector3>::Write facesw = _model_vertices.write();
+
+	_model_uv.resize(facecount);
+	DVector<Vector2>::Write texuvw = _model_uv.write();
+
+	_model_normals.resize(facecount);
+	DVector<Vector3>::Write normalsw = _model_normals.write();
+
+	int widx=0;
+	if (mesh->surface_get_format(surfaceIdx)&Mesh::ARRAY_FORMAT_INDEX) {
+
+		int ic = mesh->surface_get_array_index_len(surfaceIdx);
+		DVector<int> indices = a[Mesh::ARRAY_INDEX];
+		DVector<int>::Read ir = indices.read();
+
+		for(int i=0;i<ic;i++)  {
+			facesw[widx] = vr[ ir[i] ];
+			texuvw[widx] = uvtexr[ ir[i] ];
+			normalsw[widx] = normalsr[ ir[i] ];
+
+			widx++;
+		}
+	} else {
+		for(int i=0;i<vc;i++) {
+			facesw[widx] = vr[ i ];
+			texuvw[widx] = uvtexr[i];
+			normalsw[widx] = normalsr[ i];
+
+			widx++;
+		}
+	}
+
+	return Ref<Voxel>(this);
+}
+
 //Ref<Voxel> Voxel::set_xquad_geometry(Vector2 atlas_pos) {
 //    // TODO
 //    return Ref<Voxel>(this);
@@ -193,9 +264,19 @@ void Voxel::_bind_methods() {
 	ObjectTypeDB::bind_method(_MD("set_material_id", "id"), &Voxel::set_material_id);
 	ObjectTypeDB::bind_method(_MD("get_material_id"), &Voxel::get_material_id);
 
+    ObjectTypeDB::bind_method(_MD("hide_faces", "faces:Array"), &Voxel::hide_faces);
+    ObjectTypeDB::bind_method(_MD("is_face_visible", "face:int"), &Voxel::is_face_visible);
+
 	ObjectTypeDB::bind_method(_MD("set_cube_geometry:Voxel", "height"), &Voxel::set_cube_geometry, DEFVAL(1.f));
 	ObjectTypeDB::bind_method(_MD("set_cube_uv_all_sides:Voxel", "atlas_pos"), &Voxel::set_cube_uv_all_sides);
 	ObjectTypeDB::bind_method(_MD("set_cube_uv_tbs_sides:Voxel", "top_atlas_pos", "side_atlas_pos", "bottom_atlas_pos"), &Voxel::set_cube_uv_tbs_sides);
+    ObjectTypeDB::bind_method(_MD("set_cube_geometry_from_mesh:Voxel", "mesh:Mesh"), &Voxel::set_cube_geometry_from_mesh);
 
+    BIND_CONSTANT(SIDE_LEFT);
+    BIND_CONSTANT(SIDE_RIGHT);
+    BIND_CONSTANT(SIDE_BOTTOM);
+    BIND_CONSTANT(SIDE_TOP);
+    BIND_CONSTANT(SIDE_BACK);
+    BIND_CONSTANT(SIDE_FRONT);
 }
 

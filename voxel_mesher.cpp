@@ -155,12 +155,12 @@ void VoxelMesher::set_occlusion_enabled(bool enable) {
 
 inline Color Color_greyscale(float c) { return Color(c, c, c); }
 
-inline bool is_face_visible(const VoxelLibrary & lib, const Voxel & vt, int other_voxel_id) {
-    if (other_voxel_id == 0) // air
-        return true;
+inline bool is_face_visible(const VoxelLibrary & lib, const Voxel & vt, int other_voxel_id, int other_face) {
+    //if (other_voxel_id == 0) // air
+    //    return true;
     if (lib.has_voxel(other_voxel_id)) {
         const Voxel & other_vt = lib.get_voxel_const(other_voxel_id);
-        return other_vt.is_transparent() && vt.get_id() != other_voxel_id;
+        return (other_vt.is_transparent() && vt.get_id() != other_voxel_id) || !other_vt.is_face_visible(other_face);
     }
     return true;
 }
@@ -171,12 +171,12 @@ inline bool is_transparent(const VoxelLibrary & lib, int voxel_id) {
     return true;
 }
 
-Ref<Mesh> VoxelMesher::build_ref(Ref<VoxelBuffer> buffer_ref) {
+Ref<Mesh> VoxelMesher::build_ref(Ref<VoxelBuffer> buffer_ref, unsigned int channel_number) {
     ERR_FAIL_COND_V(buffer_ref.is_null(), Ref<Mesh>());
-    return build(**buffer_ref);
+    return build(**buffer_ref, channel_number);
 }
 
-Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
+Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer, unsigned int channel_number) {
     ERR_FAIL_COND_V(_library.is_null(), Ref<Mesh>());
 
     const VoxelLibrary & library = **_library;
@@ -204,9 +204,9 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
         for (unsigned int x = 1; x < buffer_size.x-1; ++x) {
             for (unsigned int y = 1; y < buffer_size.y-1; ++y) {
 
-                int voxel_id = buffer.get_voxel(x, y, z, 0);
+                int voxel_id = buffer.get_voxel(x, y, z, channel_number);
 
-                if (voxel_id != 0 && library.has_voxel(voxel_id)) {
+                if (library.has_voxel(voxel_id)) {
 
                     const Voxel & voxel = library.get_voxel_const(voxel_id);
 
@@ -218,6 +218,10 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
                     // Sides
                     for (unsigned int side = 0; side < Voxel::SIDE_COUNT; ++side) {
 
+                    	if(!voxel.is_face_visible(side)) {
+                    		continue;
+                    	}
+
                         const DVector<Vector3> & vertices = voxel.get_model_side_vertices(side);
                         if (vertices.size() != 0) {
 
@@ -226,9 +230,9 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
                             unsigned ny = y + normal.y;
                             unsigned nz = z + normal.z;
 
-                            int neighbor_voxel_id = buffer.get_voxel(nx, ny, nz, 0);
+                            int neighbor_voxel_id = buffer.get_voxel(nx, ny, nz, channel_number);
                             // TODO Better face visibility test
-                            if (is_face_visible(library, voxel, neighbor_voxel_id)) {
+                            if (is_face_visible(library, voxel, neighbor_voxel_id, Voxel::opposite(side))) {
 
                                 // The face is visible
 
@@ -325,9 +329,11 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
     }
 
     // Commit mesh
+    int count_valid_materials = 0;
     Ref<Mesh> mesh_ref;
     for (unsigned int i = 0; i < MAX_MATERIALS; ++i) {
         if (_materials[i].is_valid()) {
+        	count_valid_materials++;
             SurfaceTool & st = _surface_tool[i];
             
             // Index mesh to reduce memory usage and make upload to VRAM faster
@@ -338,6 +344,8 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer) {
             st.clear();
         }
     }
+
+    ERR_FAIL_COND_V(count_valid_materials == 0, Ref<Mesh>());
 
     return mesh_ref;
 }
@@ -356,6 +364,6 @@ void VoxelMesher::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("set_occlusion_darkness", "value"), &VoxelMesher::set_occlusion_darkness);
 	ObjectTypeDB::bind_method(_MD("get_occlusion_darkness"), &VoxelMesher::get_occlusion_darkness);
 
-	ObjectTypeDB::bind_method(_MD("build", "voxel_buffer"), &VoxelMesher::build_ref);
+	ObjectTypeDB::bind_method(_MD("build", "voxel_buffer:VoxelBuffer", "channel_number:int"), &VoxelMesher::build_ref);
 
 }

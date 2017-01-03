@@ -2,6 +2,7 @@
 #define VOXEL_TYPE_H
 
 #include <reference.h>
+#include <scene/resources/mesh.h>
 
 class VoxelLibrary;
 
@@ -22,6 +23,14 @@ public:
 
 		SIDE_COUNT
 	};
+
+	static unsigned int opposite(unsigned int side) {
+		if(side & 1) {
+			return side - 1;
+		} else {
+			return side + 1;
+    	}
+    }
 
 	Voxel();
 
@@ -47,6 +56,7 @@ public:
 	Ref<Voxel> set_cube_geometry(float sy = 1);
 	Ref<Voxel> set_cube_uv_all_sides(Vector2 atlas_pos);
 	Ref<Voxel> set_cube_uv_tbs_sides(Vector2 top_atlas_pos, Vector2 side_atlas_pos, Vector2 bottom_atlas_pos);
+	Ref<Voxel> set_cube_geometry_from_mesh(Ref<Mesh> mesh);
 	//Ref<Voxel> set_xquad_geometry(Vector2 atlas_pos);
 
 	// Getters for native usage only
@@ -58,6 +68,9 @@ public:
 	const DVector<Vector2> & get_model_side_uv(unsigned int side) const { return _model_side_uv[side]; }
 
 	void set_library_ptr(VoxelLibrary * lib) { _library = lib; }
+
+    Ref<Voxel> hide_faces(Array faces);
+    _FORCE_INLINE_ bool is_face_visible(int face) const { return !(_hidden_faces & (1 << face));}
 
 protected:
 	Ref<Voxel> _set_cube_uv_sides(const Vector2 atlas_pos[6]);
@@ -74,6 +87,7 @@ private:
 	// Properties
 	int _material_id;
 	bool _is_transparent;
+	uint8_t _hidden_faces;
 
 	// Model
 	Color _color;

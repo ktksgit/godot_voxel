@@ -1,2 +1,9 @@
 *.obj
 *.pyc
+
+#binary
+*.o
+
+#eclipse
+*.project
+*.cproject
