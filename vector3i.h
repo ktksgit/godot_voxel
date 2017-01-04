@@ -96,12 +96,18 @@ struct Vector3i {
 		sort_min_max(a.z, b.z);
 	}
 
-    _FORCE_INLINE_ const bool operator<(const Vector3i & rhs) const {
-    	return (x < rhs.x) && (y < rhs.y) && (z < rhs.z);
+	_FORCE_INLINE_ const bool operator<(const Vector3i & rhs) const {
+		if (x != rhs.x) {
+    		return x < rhs.x;
+    	} else if (y != rhs.y) {
+    		return y < rhs.y;
+    	} else {
+    		return z < rhs.z;
+    	}
     }
 
     _FORCE_INLINE_ bool operator>(const Vector3i & rhs) const {
-    	return !((x < rhs.x) && (y < rhs.y) && (z < rhs.z));
+    	return !(*this < rhs);
     }
 
 private:

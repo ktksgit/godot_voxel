@@ -90,6 +90,12 @@ public:
 protected:
 
     static void _bind_methods();
+
+
+private:
+	void _spread_ambient_light_binding(unsigned int solid_channel,
+			unsigned int light_channel, const DVector<Vector3>& from_nodes,
+			Dictionary  modified_blocks);
 };
 
 #endif /* VOXEL_ILLUMINATION_H_ */

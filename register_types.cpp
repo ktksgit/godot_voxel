@@ -1,5 +1,6 @@
 #include "register_types.h"
 #include "voxel_buffer.h"
+#include "voxel_illumination.h"
 #include "voxel_mesher.h"
 #include "voxel_library.h"
 #include "voxel_map.h"
@@ -10,6 +11,7 @@ void register_voxel_types() {
 
 	ObjectTypeDB::register_type<Voxel>();
 	ObjectTypeDB::register_type<VoxelBuffer>();
+	ObjectTypeDB::register_type<VoxelIllumination>();
 	ObjectTypeDB::register_type<VoxelMesher>();
 	ObjectTypeDB::register_type<VoxelLibrary>();
 	ObjectTypeDB::register_type<VoxelMap>();

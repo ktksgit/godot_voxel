@@ -31,18 +31,19 @@ void VoxelIllumination::spread_ambient_light(unsigned int solid_channel,
 
 	bool checkedInModifiedList = false;
 
-	for (Set<Vector3i>::Element* j = from_nodes.front(); j != from_nodes.back();
-			j = j->next()) {
+	for (Set<Vector3i>::Element* j = from_nodes.front(); j; j = j->next()) {
 		Vector3i pos = j->get();
 		Vector3i blockPos = _map->voxel_to_block(pos);
-		Vector3i relPos = pos - blockPos;
+		Vector3i relPos = pos - _map->block_to_voxel(blockPos);
 
 		VoxelBlock * lastBlock = block;
 		block = _map->get_block(blockPos);
+		if (block == NULL) {
+			continue;
+		}
+
 		if (lastBlock != block) {
 			checkedInModifiedList = false;
-		} else if (block == NULL) {
-			continue;
 		}
 
 		Light oldlight = Light(block->voxels->get_voxel(relPos, light_channel));
@@ -52,14 +53,16 @@ void VoxelIllumination::spread_ambient_light(unsigned int solid_channel,
 			Vector3i neighbourPos = pos + dirs[i];
 
 			Vector3i blockPos = _map->voxel_to_block(neighbourPos);
-			Vector3i relPos = neighbourPos - blockPos;
+			Vector3i relPos = neighbourPos - _map->block_to_voxel(blockPos);
 
 			VoxelBlock * lastBlock = block;
 			block = _map->get_block(blockPos);
+			if (block == NULL) {
+				continue;
+			}
+
 			if (lastBlock != block) {
 				checkedInModifiedList = false;
-			} else if (block == NULL) {
-				continue;
 			}
 
 			Light neighbour = Light(block->voxels->get_voxel(relPos, light_channel));
@@ -92,6 +95,7 @@ void VoxelIllumination::spread_ambient_light(unsigned int solid_channel,
 	}
 
 	if (lightedNodes.size() != 0) {
+		from_nodes.clear();
 		spread_ambient_light(solid_channel, light_channel, lightedNodes, modified_blocks);
 	}
 }
@@ -99,4 +103,26 @@ void VoxelIllumination::spread_ambient_light(unsigned int solid_channel,
 void VoxelIllumination::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("set_library", "voxel_library:VoxelLibrary"), &VoxelIllumination::set_library);
     ObjectTypeDB::bind_method(_MD("set_map", "voxel_map:VoxelMap"), &VoxelIllumination::set_map);
+    ObjectTypeDB::bind_method(_MD("spread_ambient_light", "solid_channel:int", "light_channel:int", "from_nodes:Vector3Array", "modified_blocks:Dictionary"), &VoxelIllumination::_spread_ambient_light_binding);
+}
+
+void VoxelIllumination::_spread_ambient_light_binding(
+		unsigned int solid_channel, unsigned int light_channel,
+		const DVector<Vector3>& from_nodes, Dictionary modified_blocks) {
+
+	Map<Vector3i, VoxelBlock*>  modifiedBlocks;
+	Set<Vector3i>  fromNodes;
+	const DVector<Vector3>::Read readNodes = from_nodes.read();
+
+	for (int i = 0; i < from_nodes.size(); i++) {
+		fromNodes.insert(readNodes[i]);
+	}
+
+	spread_ambient_light(solid_channel, light_channel, fromNodes, modifiedBlocks);
+
+	if (!modifiedBlocks.empty()) {
+		for (Map<Vector3i, VoxelBlock*>::Element * e = modifiedBlocks.front(); e; e = e->next()) {
+			modified_blocks[e->key().to_vec3()] = Ref<VoxelBuffer>(e->get());
+		}
+	}
 }
