@@ -42,6 +42,7 @@ VoxelBlock * VoxelBlock::create(Vector3i bpos, VoxelBuffer * buffer) {
 	}
 	else {
 		buffer = memnew(VoxelBuffer);
+		buffer->create(SIZE, SIZE, SIZE);
 	}
 	ERR_FAIL_COND_V(buffer == NULL, NULL);
 	block->voxels = Ref<VoxelBuffer>(buffer);
