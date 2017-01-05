@@ -10,7 +10,9 @@ VoxelIllumination::~VoxelIllumination() {
 
 void VoxelIllumination::spread_ambient_light(unsigned int solid_channel,
 		unsigned int light_channel, Set<Vector3i> & from_nodes,
-		Map<Vector3i, VoxelBlock*> & modified_blocks) {
+		Map<Vector3i, VoxelBlock*> & modified_blocks, int recursion_countdown) {
+
+	ERR_FAIL_COND(recursion_countdown <= 0);
 
 	const Vector3i dirs[6] = {
 			Vector3i(0, 0, 1), // back
@@ -69,7 +71,7 @@ void VoxelIllumination::spread_ambient_light(unsigned int solid_channel,
 
 			bool changed = false;
 
-			if (neighbour > oldlight.increase()) {
+			if (neighbour > oldlight.increase() && neighbour != Light(Light::LIGHT_MARKING)) {
 				lightedNodes.insert(neighbourPos);
 				changed = true;
 			} else if (neighbour < newlight) {
@@ -77,8 +79,7 @@ void VoxelIllumination::spread_ambient_light(unsigned int solid_channel,
 				const Voxel & solid = _library->get_voxel_const(solid_id);
 
 				if (solid.is_transparent()) {
-					neighbour = Light(newlight);
-					block->voxels->set_voxel(neighbour.value, relPos,
+					block->voxels->set_voxel(newlight.value, relPos,
 							light_channel);
 					lightedNodes.insert(neighbourPos);
 					changed = true;
@@ -96,7 +97,7 @@ void VoxelIllumination::spread_ambient_light(unsigned int solid_channel,
 
 	if (lightedNodes.size() != 0) {
 		from_nodes.clear();
-		spread_ambient_light(solid_channel, light_channel, lightedNodes, modified_blocks);
+		spread_ambient_light(solid_channel, light_channel, lightedNodes, modified_blocks, recursion_countdown - 1);
 	}
 }
 
@@ -118,11 +119,11 @@ void VoxelIllumination::_spread_ambient_light_binding(
 		fromNodes.insert(readNodes[i]);
 	}
 
-	spread_ambient_light(solid_channel, light_channel, fromNodes, modifiedBlocks);
+	spread_ambient_light(solid_channel, light_channel, fromNodes, modifiedBlocks, Light::LIGHT_MAX);
 
 	if (!modifiedBlocks.empty()) {
 		for (Map<Vector3i, VoxelBlock*>::Element * e = modifiedBlocks.front(); e; e = e->next()) {
-			modified_blocks[e->key().to_vec3()] = Ref<VoxelBuffer>(e->get());
+			modified_blocks[e->key().to_vec3()] = Ref<VoxelBuffer>(e->get()->voxels);
 		}
 	}
 }

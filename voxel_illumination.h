@@ -26,14 +26,15 @@ class VoxelIllumination: public Reference {
 	public:
 		uint8_t value;
 		enum {
-			LIGHT_MAX = 15
+			LIGHT_MAX = 14,
+			LIGHT_MARKING = 15
 		};
 
-		Light (int light) {
+		_FORCE_INLINE_ Light (int light) {
 			value = uint8_t(light & 0x0000000f);
 		}
 
-		Light (uint8_t light) {
+		_FORCE_INLINE_ Light (uint8_t light) {
 			value = light;
 		}
 
@@ -42,19 +43,23 @@ class VoxelIllumination: public Reference {
 		}
 
 		_FORCE_INLINE_ Light diminish() {
-			if (value == 0)
-				Light(0);
-			if (value >= LIGHT_MAX)
-				Light(LIGHT_MAX - 1);
+			if (value == 0) {
+				return Light(0);
+			}
+			if (value >= LIGHT_MAX) {
+				return Light(LIGHT_MAX - 1);
+			}
 
 			return Light(value - 1);
 		}
 
 		_FORCE_INLINE_ Light increase() {
-			if (value == 0)
-				Light(0);
-			if (value == LIGHT_MAX)
-				Light(int(value));
+			if (value == 0) {
+				return Light(0);
+			}
+			if (value == LIGHT_MAX) {
+				return Light(int(value));
+			}
 
 			return Light(value + 1);
 		}
@@ -65,6 +70,10 @@ class VoxelIllumination: public Reference {
 
 		_FORCE_INLINE_ bool operator< (const Light& rhs) {
 			return value < rhs.value;
+		}
+
+		_FORCE_INLINE_ bool operator!= (const Light& rhs) {
+			return value != rhs.value;
 		}
 
 
@@ -85,7 +94,7 @@ public:
 
 	void spread_ambient_light(unsigned int solid_channel, unsigned int light_channel,
 			Set<Vector3i> & from_nodes,
-			Map<Vector3i, VoxelBlock*> & modified_blocks);
+			Map<Vector3i, VoxelBlock*> & modified_blocks, int recursion_countdown);
 
 protected:
 

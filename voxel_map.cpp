@@ -248,7 +248,7 @@ void VoxelMap::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("get_default_voxel", "channel"), &VoxelMap::get_default_voxel, DEFVAL(0));
     ObjectTypeDB::bind_method(_MD("set_default_voxel", "value", "channel"), &VoxelMap::set_default_voxel, DEFVAL(0));
     ObjectTypeDB::bind_method(_MD("has_block", "vector:Vector3"), &VoxelMap::_has_block_binding);
-    ObjectTypeDB::bind_method(_MD("get_buffer_copy", "min_pos", "out_buffer:VoxelBuffer", "channel"), &VoxelMap::_get_buffer_copy_binding, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("get_buffer_copy", "min_pos", "out_buffer:VoxelBuffer", "channels:Array"), &VoxelMap::_get_buffer_copy_binding);
     ObjectTypeDB::bind_method(_MD("set_block_buffer", "block_pos", "buffer:VoxelBuffer"), &VoxelMap::_set_block_buffer_binding);
     ObjectTypeDB::bind_method(_MD("voxel_to_block", "voxel_pos"), &VoxelMap::_voxel_to_block_binding);
     ObjectTypeDB::bind_method(_MD("block_to_voxel", "block_pos"), &VoxelMap::_block_to_voxel_binding);
@@ -262,8 +262,17 @@ void VoxelMap::_bind_methods() {
 }
 
 
-void VoxelMap::_get_buffer_copy_binding(Vector3 pos, Ref<VoxelBuffer> dst_buffer_ref, unsigned int channel) {
+void VoxelMap::_get_buffer_copy_binding(Vector3 pos, Ref<VoxelBuffer> dst_buffer_ref, DVector<int> channels) {
 	ERR_FAIL_COND(dst_buffer_ref.is_null());
-	get_buffer_copy(Vector3i(pos), **dst_buffer_ref, channel);
+
+	if (channels.size() == 0) {
+		return;
+	}
+
+	DVector<int>::Read read = channels.read();
+	for (int i = 0; i < channels.size(); i++) {
+		//TODO: pass all channels to get_buffer_copy
+		get_buffer_copy(Vector3i(pos), **dst_buffer_ref, read[i]);
+	}
 }
 
