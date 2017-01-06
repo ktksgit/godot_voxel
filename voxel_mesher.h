@@ -30,7 +30,9 @@ public:
 
     Ref<Mesh> build(const VoxelBuffer & buffer_ref, unsigned int channel_number);
     Ref<Mesh> build_ref(Ref<VoxelBuffer> buffer_ref, unsigned int channel_number);
-    
+
+	Ref<Mesh> build_lighted(Ref<VoxelBuffer> buffer, int solid_channel, int light_channel);
+
 protected:
 	static void _bind_methods();
 

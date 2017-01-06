@@ -84,6 +84,15 @@ static const unsigned int g_side_edges[Voxel::SIDE_COUNT][4] = {
 //    { 3, 2, 6, 3, 6, 7 }
 //};
 
+static const unsigned int g_vertex_idx_to_corner[Voxel::SIDE_COUNT][6] = {
+	{ 0, 4, 7, 0, 7, 3 },
+	{ 1, 6, 5, 1, 2, 6 },
+	{ 0, 2, 1, 0, 3, 2 },
+	{ 4, 5, 6, 4, 6, 7 },
+	{ 0, 1, 5 ,0, 5, 4 },
+	{ 2, 3, 6, 3, 7, 6 }
+};
+
 static const Vector3i g_corner_inormals[CORNER_COUNT] = {
     Vector3i(-1, -1, -1),
     Vector3i(1, -1, -1),
@@ -350,6 +359,161 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer, unsigned int channel_nu
     return mesh_ref;
 }
 
+Ref<Mesh> VoxelMesher::build_lighted(Ref<VoxelBuffer> buffer, int solid_channel, int light_channel) {
+	ERR_FAIL_COND_V(_library.is_null(), Ref<Mesh>());
+
+	const VoxelLibrary & library = **_library;
+
+	for (unsigned int i = 0; i < MAX_MATERIALS; ++i) {
+		_surface_tool[i].begin(Mesh::PRIMITIVE_TRIANGLES);
+	}
+
+	float baked_occlusion_darkness = _baked_occlusion_darkness / 3.0;
+
+	const Vector3i buffer_size = buffer->get_size();
+	for (unsigned int z = 1; z < buffer_size.z - 1; ++z) {
+		for (unsigned int x = 1; x < buffer_size.x - 1; ++x) {
+			for (unsigned int y = 1; y < buffer_size.y - 1; ++y) {
+
+				int voxel_id = buffer->get_voxel(x, y, z, solid_channel);
+
+				if (library.has_voxel(voxel_id)) {
+
+					const Voxel & voxel = library.get_voxel_const(voxel_id);
+
+					SurfaceTool & st = _surface_tool[voxel.get_material_id()];
+
+					for (unsigned int side = 0; side < Voxel::SIDE_COUNT; ++side) {
+
+						if (!voxel.is_face_visible(side)) {
+							continue;
+						}
+
+						const DVector<Vector3> & vertices = voxel.get_model_side_vertices(side);
+						if (vertices.size() != 0) {
+
+							Vector3i normal = g_side_normals[side];
+							unsigned nx = x + normal.x;
+							unsigned ny = y + normal.y;
+							unsigned nz = z + normal.z;
+
+							bool maskLight = buffer->get_voxel(x, y, z, light_channel) == 15;
+							int neighbor_voxel_id = buffer->get_voxel(nx, ny, nz, solid_channel);
+							if (is_face_visible(library, voxel, neighbor_voxel_id, Voxel::opposite(side))) {
+								// The face is visible
+
+								float light_corner[8] = { 0 };
+								int light_count_corner[8] = { 0 };
+
+								float face_light = (float) buffer->get_voxel(nx, ny, nz, light_channel);
+
+								// Combinatory solution for https://0fps.net/2013/07/03/ambient-occlusion-for-minecraft-like-worlds/
+
+								for (unsigned int j = 0; j < 4; ++j) {
+									unsigned int edge = g_side_edges[side][j];
+									Vector3i edge_normal = g_edge_inormals[edge];
+									unsigned ex = x + edge_normal.x;
+									unsigned ey = y + edge_normal.y;
+									unsigned ez = z + edge_normal.z;
+
+									float edge_light = (float) buffer->get_voxel(ex, ey, ez, light_channel);
+
+									if (edge_light < 15) {
+										light_corner[g_edge_corners[edge][0]] += edge_light;
+										light_corner[g_edge_corners[edge][1]] += edge_light;
+
+										light_count_corner[g_edge_corners[edge][0]] += 1;
+										light_count_corner[g_edge_corners[edge][1]] += 1;
+									}
+								}
+								for (unsigned int j = 0; j < 4; ++j) {
+									unsigned int corner = g_side_corners[side][j];
+
+									Vector3i corner_normal = g_corner_inormals[corner];
+									unsigned int cx = x + corner_normal.x;
+									unsigned int cy = y + corner_normal.y;
+									unsigned int cz = z + corner_normal.z;
+
+									int corner_light = buffer->get_voxel(cx, cy, cz, light_channel);
+
+									if (corner_light < 15) {
+										light_corner[corner] += corner_light;
+										light_count_corner[corner] += 1;
+									}
+
+									if (maskLight) {
+										light_corner[corner] += 14;
+									} else {
+										light_corner[corner] += face_light;
+									}
+									light_count_corner[corner] += 1;
+								}
+
+								DVector<Vector3>::Read rv = vertices.read();
+								DVector<Vector2>::Read rt = voxel.get_model_side_uv(side).read();
+								Vector3 pos(x - 1, y - 1, z - 1);
+
+								for (unsigned int i = 0; i < vertices.size(); ++i) {
+									Vector3 v = rv[i];
+
+									float gs = 0;
+
+									int count = light_count_corner[g_vertex_idx_to_corner[side][i]];
+									if (count) {
+										gs = light_corner[g_vertex_idx_to_corner[side][i]] / count * 0.066666;
+									}
+									st.add_color(Color(gs, gs, gs));
+
+									st.add_normal(Vector3(normal.x, normal.y, normal.z));
+									st.add_uv(rt[i]);
+									st.add_vertex(v + pos);
+								}
+							}
+						}
+					}
+
+					// Inside
+					if (voxel.get_model_vertices().size() != 0) {
+
+						const DVector<Vector3> & vertices = voxel.get_model_vertices();
+						DVector<Vector3>::Read rv = voxel.get_model_vertices().read();
+						DVector<Vector3>::Read rn = voxel.get_model_normals().read();
+						DVector<Vector2>::Read rt = voxel.get_model_uv().read();
+						Vector3 pos(x - 1, y - 1, z - 1);
+
+						for (unsigned int i = 0; i < vertices.size(); ++i) {
+							st.add_normal(rn[i]);
+							st.add_uv(rt[i]);
+							st.add_vertex(rv[i] + pos);
+						}
+					}
+
+				}
+
+			}
+		}
+	}
+
+	// Commit mesh
+	int count_valid_materials = 0;
+	Ref<Mesh> mesh_ref;
+	for (unsigned int i = 0; i < MAX_MATERIALS; ++i) {
+		if (_materials[i].is_valid()) {
+			count_valid_materials++;
+			SurfaceTool & st = _surface_tool[i];
+
+			st.index();
+
+			mesh_ref = st.commit(mesh_ref);
+			st.clear();
+		}
+	}
+
+	ERR_FAIL_COND_V(count_valid_materials == 0, Ref<Mesh>());
+
+	return mesh_ref;
+}
+
 void VoxelMesher::_bind_methods() {
 
 	ObjectTypeDB::bind_method(_MD("set_material", "material", "id"), &VoxelMesher::set_material);
@@ -365,5 +529,6 @@ void VoxelMesher::_bind_methods() {
 	ObjectTypeDB::bind_method(_MD("get_occlusion_darkness"), &VoxelMesher::get_occlusion_darkness);
 
 	ObjectTypeDB::bind_method(_MD("build", "voxel_buffer:VoxelBuffer", "channel_number:int"), &VoxelMesher::build_ref);
+	ObjectTypeDB::bind_method(_MD("build_lighted", "voxel_buffer:VoxelBuffer", "solid_channel:int", "light_channel:int"), &VoxelMesher::build_lighted);
 
 }
