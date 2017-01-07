@@ -131,7 +131,9 @@ static const unsigned int g_edge_corners[EDGE_COUNT][2] = {
 
 VoxelMesher::VoxelMesher():
 	_baked_occlusion_darkness(0.75),
-	_bake_occlusion(true)
+	_bake_occlusion(true),
+	_randomize_corners(false),
+	_randomize_factor(Vector3 (0, 0, 0))
 {}
 
 void VoxelMesher::set_library(Ref<VoxelLibrary> library) {
@@ -359,7 +361,7 @@ Ref<Mesh> VoxelMesher::build(const VoxelBuffer & buffer, unsigned int channel_nu
     return mesh_ref;
 }
 
-Ref<Mesh> VoxelMesher::build_lighted(Ref<VoxelBuffer> buffer, int solid_channel, int light_channel) {
+Ref<Mesh> VoxelMesher::build_lighted(Ref<VoxelBuffer> buffer, int solid_channel, int light_channel, Vector3i block_pos_in_world) {
 	ERR_FAIL_COND_V(_library.is_null(), Ref<Mesh>());
 
 	const VoxelLibrary & library = **_library;
@@ -454,7 +456,15 @@ Ref<Mesh> VoxelMesher::build_lighted(Ref<VoxelBuffer> buffer, int solid_channel,
 								Vector3 pos(x - 1, y - 1, z - 1);
 
 								for (unsigned int i = 0; i < vertices.size(); ++i) {
-									Vector3 v = rv[i];
+									Vector3 v = rv[i] + pos;
+
+									Vector3 random = Vector3(0, 0, 0);
+									if (_randomize_corners) {
+										random = v + block_pos_in_world.to_vec3();
+										random = _fixed_randomize(random);
+
+										v += random;
+									}
 
 									float gs = 0;
 
@@ -464,9 +474,9 @@ Ref<Mesh> VoxelMesher::build_lighted(Ref<VoxelBuffer> buffer, int solid_channel,
 									}
 									st.add_color(Color(gs, gs, gs));
 
-									st.add_normal(Vector3(normal.x, normal.y, normal.z));
+									st.add_normal(normal.to_vec3());
 									st.add_uv(rt[i]);
-									st.add_vertex(v + pos);
+									st.add_vertex(v);
 								}
 							}
 						}
@@ -528,7 +538,9 @@ void VoxelMesher::_bind_methods() {
     ObjectTypeDB::bind_method(_MD("set_occlusion_darkness", "value"), &VoxelMesher::set_occlusion_darkness);
 	ObjectTypeDB::bind_method(_MD("get_occlusion_darkness"), &VoxelMesher::get_occlusion_darkness);
 
+	ObjectTypeDB::bind_method(_MD("set_randomize_factor", "factor:Vector3", "blockpos:Vector3"), &VoxelMesher::set_randomize_factor);
+
 	ObjectTypeDB::bind_method(_MD("build", "voxel_buffer:VoxelBuffer", "channel_number:int"), &VoxelMesher::build_ref);
-	ObjectTypeDB::bind_method(_MD("build_lighted", "voxel_buffer:VoxelBuffer", "solid_channel:int", "light_channel:int"), &VoxelMesher::build_lighted);
+	ObjectTypeDB::bind_method(_MD("build_lighted", "voxel_buffer:VoxelBuffer", "solid_channel:int", "light_channel:int", "blockpos:Vector3"), &VoxelMesher::_build_lighted_binding);
 
 }
