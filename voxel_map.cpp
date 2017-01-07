@@ -1,4 +1,39 @@
 #include "voxel_map.h"
+#include "core/os/os.h"
+
+//----------------------------------------------------------------------------
+// VoxelBlock
+//----------------------------------------------------------------------------
+
+MeshInstance * VoxelBlock::get_mesh_instance(const Node & root) {
+	if (mesh_instance_path.is_empty())
+		return NULL;
+	Node * n = root.get_node(mesh_instance_path);
+	if (n == NULL)
+		return NULL;
+	return n->cast_to<MeshInstance>();
+}
+
+// Helper
+VoxelBlock * VoxelBlock::create(Vector3i bpos, Ref<VoxelBuffer> buffer) {
+	const int bs = VoxelBlock::SIZE;
+	ERR_FAIL_COND_V(buffer.is_null(), NULL);
+	ERR_FAIL_COND_V(buffer->get_size() != Vector3i(bs, bs, bs), NULL);
+
+	VoxelBlock * block = memnew(VoxelBlock);
+	block->pos = bpos;
+
+	block->voxels = buffer;
+	//block->map = &map;
+	return block;
+}
+
+VoxelBlock::VoxelBlock(): voxels(NULL) {
+}
+
+//----------------------------------------------------------------------------
+// VoxelMap
+//----------------------------------------------------------------------------
 
 VoxelMap::VoxelMap() : _last_accessed_block(NULL) {
 	for (unsigned int i = 0; i < VoxelBuffer::MAX_CHANNELS; ++i) {
@@ -7,7 +42,7 @@ VoxelMap::VoxelMap() : _last_accessed_block(NULL) {
 }
 
 VoxelMap::~VoxelMap() {
-
+	clear();
 }
 
 int VoxelMap::get_voxel(Vector3i pos, unsigned int c) {
@@ -19,44 +54,22 @@ int VoxelMap::get_voxel(Vector3i pos, unsigned int c) {
 	return block->voxels->get_voxel(pos - block_to_voxel(bpos), c);
 }
 
-MeshInstance * VoxelBlock::get_mesh_instance(const Node & root) {
-	if (mesh_instance_path.is_empty())
-		return NULL;
-	Node * n = root.get_node(mesh_instance_path);
-	if (n == NULL)
-		return NULL;
-	return n->cast_to<MeshInstance>();
-}
-
-VoxelBlock::~VoxelBlock() {
-
-}
-
-// Helper
-VoxelBlock * VoxelBlock::create(Vector3i bpos, VoxelBuffer * buffer) {
-	VoxelBlock * block = memnew(VoxelBlock);
-	block->pos = bpos;
-	if (buffer) {
-		const int bs = VoxelBlock::SIZE;
-		ERR_FAIL_COND_V(buffer->get_size() != Vector3i(bs, bs, bs), NULL);
-	}
-	else {
-		buffer = memnew(VoxelBuffer);
-		buffer->create(SIZE, SIZE, SIZE);
-	}
-	ERR_FAIL_COND_V(buffer == NULL, NULL);
-	block->voxels = Ref<VoxelBuffer>(buffer);
-	//block->map = &map;
-	return block;
-}
-
 void VoxelMap::set_voxel(int value, Vector3i pos, unsigned int c) {
+
 	Vector3i bpos = voxel_to_block(pos);
 	VoxelBlock * block = get_block(bpos);
+
 	if (block == NULL) {
-		block = VoxelBlock::create(bpos);
+
+		Ref<VoxelBuffer> buffer(memnew(VoxelBuffer));
+		buffer->create(VoxelBlock::SIZE, VoxelBlock::SIZE, VoxelBlock::SIZE);
+		buffer->set_default_values(_default_voxel);
+
+		block = VoxelBlock::create(bpos, buffer);
+
 		set_block(bpos, block);
 	}
+
 	block->voxels->set_voxel(value, pos - block_to_voxel(bpos), c);
 }
 
@@ -74,15 +87,16 @@ VoxelBlock * VoxelMap::get_block(Vector3i bpos) {
 	if (_last_accessed_block && _last_accessed_block->pos == bpos) {
 		return _last_accessed_block;
 	}
-	Ref<VoxelBlock> * p = _blocks.getptr(bpos);
+	VoxelBlock ** p = _blocks.getptr(bpos);
 	if (p) {
-		_last_accessed_block = p->ptr();
+		_last_accessed_block = *p;
 		return _last_accessed_block;
 	}
 	return NULL;
 }
 
 void VoxelMap::set_block(Vector3i bpos, VoxelBlock * block) {
+	ERR_FAIL_COND(block == NULL);
 	if (_last_accessed_block == NULL || _last_accessed_block->pos == bpos) {
 		_last_accessed_block = block;
 	}
@@ -188,22 +202,21 @@ void VoxelMap::remove_blocks_not_in_area(Vector3i min, Vector3i max) {
 	Vector3i::sort_min_max(min, max);
 
 	Vector<Vector3i> to_remove;
-	Vector3i * key = NULL;
+	const Vector3i * key = NULL;
 
-	while (_blocks.next(key)) {
+	while (key = _blocks.next(key)) {
 
-		Ref<VoxelBlock> & block_ref = _blocks.get(*key);
-		ERR_FAIL_COND(block_ref.is_null()); // Should never trigger
-		VoxelBlock & block = **block_ref;
+		VoxelBlock * block_ref = _blocks.get(*key);
+		ERR_FAIL_COND(block_ref == NULL); // Should never trigger
 
-		if (!block.pos.is_contained_in(min, max)) {
+		if (block_ref->pos.is_contained_in(min, max)) {
 
 			//if (_observer)
 			//    _observer->block_removed(block);
 
 			to_remove.push_back(*key);
 
-			if (&block == _last_accessed_block)
+			if (block_ref == _last_accessed_block)
 				_last_accessed_block = NULL;
 		}
 	}
@@ -211,6 +224,39 @@ void VoxelMap::remove_blocks_not_in_area(Vector3i min, Vector3i max) {
 	for (unsigned int i = 0; i < to_remove.size(); ++i) {
 		_blocks.erase(to_remove[i]);
 	}
+}
+
+void VoxelMap::clear() {
+	const Vector3i * key = NULL;
+	while (key = _blocks.next(key)) {
+		VoxelBlock * block_ref = _blocks.get(*key);
+		if(block_ref == NULL) {
+			OS::get_singleton()->printerr("Unexpected NULL in VoxelMap::clear()");
+		}
+		memdelete(block_ref);
+	}
+	_blocks.clear();
+	_last_accessed_block = NULL;
+}
+
+void VoxelMap::_bind_methods() {
+
+	ObjectTypeDB::bind_method(_MD("get_voxel", "vector:Vector3", "channel:int"), &VoxelMap::_get_voxel_binding, DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("set_voxel", "value:int", "vector:Vector3", "channel:int"), &VoxelMap::_set_voxel_binding, DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("get_default_voxel", "channel"), &VoxelMap::get_default_voxel, DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("set_default_voxel", "value", "channel"), &VoxelMap::set_default_voxel, DEFVAL(0));
+	ObjectTypeDB::bind_method(_MD("has_block", "vector:Vector3"), &VoxelMap::_has_block_binding);
+	ObjectTypeDB::bind_method(_MD("get_buffer_copy", "min_pos", "out_buffer:VoxelBuffer", "channels:Array"), &VoxelMap::_get_buffer_copy_binding);
+	ObjectTypeDB::bind_method(_MD("set_block_buffer", "block_pos", "buffer:VoxelBuffer"), &VoxelMap::_set_block_buffer_binding);
+	ObjectTypeDB::bind_method(_MD("voxel_to_block", "voxel_pos"), &VoxelMap::_voxel_to_block_binding);
+	ObjectTypeDB::bind_method(_MD("block_to_voxel", "block_pos"), &VoxelMap::_block_to_voxel_binding);
+	ObjectTypeDB::bind_method(_MD("get_block_size"), &VoxelMap::get_block_size);
+	ObjectTypeDB::bind_method(_MD("get_block_mesh_instance:MeshInstance","block_pos:Vector3", "root:Node"),&VoxelMap::_get_block_mesh_instance_binding);
+	ObjectTypeDB::bind_method(_MD("set_block_mesh_instance","block_pos:Vector3", "mesh_instance:MeshInstance"),&VoxelMap::_set_block_mesh_instance_binding);
+	ObjectTypeDB::bind_method(_MD("create_navigation_mesh","mesh:Mesh"),&VoxelMap::_create_navigation_mesh_binding);
+
+	//ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations"), _SCS("set_iterations"), _SCS("get_iterations"));
+
 }
 
 MeshInstance *VoxelMap::_get_block_mesh_instance_binding(Vector3 bpos, Node * root) {
@@ -223,12 +269,18 @@ MeshInstance *VoxelMap::_get_block_mesh_instance_binding(Vector3 bpos, Node * ro
 void VoxelMap::_set_block_mesh_instance_binding(Vector3 bpos, Node * node) {
 	ERR_FAIL_NULL(node);
 	MeshInstance * mesh_instance = node->cast_to<MeshInstance>();
-	VoxelBlock* block = get_block(Vector3i(bpos));
+	
+	VoxelBlock * block = get_block(bpos);
 
-    if (block == NULL) {
-        block = VoxelBlock::create(Vector3i(bpos));
-        set_block(bpos, block);
-    }
+	if (block == NULL) {
+		Ref<VoxelBuffer> buffer(memnew(VoxelBuffer));
+		buffer->create(VoxelBlock::SIZE, VoxelBlock::SIZE, VoxelBlock::SIZE);
+		buffer->set_default_values(_default_voxel);
+
+		block = VoxelBlock::create(bpos, buffer);
+
+		set_block(bpos, block);
+	}
 
 	block->mesh_instance_path = mesh_instance->get_path();
 }
@@ -240,27 +292,6 @@ Ref<NavigationMesh> VoxelMap::_create_navigation_mesh_binding(Ref<Mesh> mesh) {
 	navigation_mesh->create_from_mesh(mesh);
 	return navigation_mesh;
 }
-
-void VoxelMap::_bind_methods() {
-
-	ObjectTypeDB::bind_method(_MD("get_voxel", "vector:Vector3", "channel:int"), &VoxelMap::_get_voxel_binding, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("set_voxel", "value:int", "vector:Vector3", "channel:int"), &VoxelMap::_set_voxel_binding, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("get_default_voxel", "channel"), &VoxelMap::get_default_voxel, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("set_default_voxel", "value", "channel"), &VoxelMap::set_default_voxel, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("has_block", "vector:Vector3"), &VoxelMap::_has_block_binding);
-    ObjectTypeDB::bind_method(_MD("get_buffer_copy", "min_pos", "out_buffer:VoxelBuffer", "channels:Array"), &VoxelMap::_get_buffer_copy_binding);
-    ObjectTypeDB::bind_method(_MD("set_block_buffer", "block_pos", "buffer:VoxelBuffer"), &VoxelMap::_set_block_buffer_binding);
-    ObjectTypeDB::bind_method(_MD("voxel_to_block", "voxel_pos"), &VoxelMap::_voxel_to_block_binding);
-    ObjectTypeDB::bind_method(_MD("block_to_voxel", "block_pos"), &VoxelMap::_block_to_voxel_binding);
-    ObjectTypeDB::bind_method(_MD("get_block_size"), &VoxelMap::get_block_size);
-	ObjectTypeDB::bind_method(_MD("get_block_mesh_instance:MeshInstance","block_pos:Vector3", "root:Node"),&VoxelMap::_get_block_mesh_instance_binding);
-	ObjectTypeDB::bind_method(_MD("set_block_mesh_instance","block_pos:Vector3", "mesh_instance:MeshInstance"),&VoxelMap::_set_block_mesh_instance_binding);
-	ObjectTypeDB::bind_method(_MD("create_navigation_mesh","mesh:Mesh"),&VoxelMap::_create_navigation_mesh_binding);
-
-	//ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations"), _SCS("set_iterations"), _SCS("get_iterations"));
-
-}
-
 
 void VoxelMap::_get_buffer_copy_binding(Vector3 pos, Ref<VoxelBuffer> dst_buffer_ref, DVector<int> channels) {
 	ERR_FAIL_COND(dst_buffer_ref.is_null());

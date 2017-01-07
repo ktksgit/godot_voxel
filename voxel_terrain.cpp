@@ -79,6 +79,7 @@ void VoxelTerrain::update_blocks() {
 	uint32_t max_time = 1000 / 60;
 
 	while (!_block_update_queue.empty() && (os.get_ticks_msec() - time_before) < max_time) {
+		//printf("Remaining: %i\n", _block_update_queue.size());
 
 		// TODO Move this to a thread
 		// TODO Have VoxelTerrainGenerator in C++
@@ -88,37 +89,37 @@ void VoxelTerrain::update_blocks() {
 		Vector3i block_pos = _block_update_queue[_block_update_queue.size() - 1];
 
 		if (!_map->has_block(block_pos)) {
-
 			// Create buffer
-			Ref<VoxelBuffer> buffer_ref = Ref<VoxelBuffer>(memnew(VoxelBuffer));
-			const Vector3i block_size(VoxelBlock::SIZE, VoxelBlock::SIZE, VoxelBlock::SIZE);
-			buffer_ref->create(block_size.x, block_size.y, block_size.z);
-
-			// Query voxel provider
 			if(!_provider.is_null()) {
+				Ref<VoxelBuffer> buffer_ref = Ref<VoxelBuffer>(memnew(VoxelBuffer));
+				const Vector3i block_size(VoxelBlock::SIZE, VoxelBlock::SIZE, VoxelBlock::SIZE);
+				buffer_ref->create(block_size.x, block_size.y, block_size.z);
+
+				// Query voxel provider
 				_provider->emerge_block(buffer_ref, block_pos);
+
+				// Check script return
+				ERR_FAIL_COND(buffer_ref->get_size() != block_size);
+
+				// Store buffer
+				_map->set_block_buffer(block_pos, buffer_ref);
 			}
+		}
 
-			// Check script return
-			ERR_FAIL_COND(buffer_ref->get_size() != block_size);
-
-			// Store buffer
-			_map->set_block_buffer(block_pos, buffer_ref);
-
-			// Update meshes
-			Vector3i ndir;
-			for (ndir.z = -1; ndir.z < 2; ++ndir.z) {
-				for (ndir.x = -1; ndir.x < 2; ++ndir.x) {
-					for (ndir.y = -1; ndir.y < 2; ++ndir.y) {
-						Vector3i npos = block_pos + ndir;
-						if (_map->is_block_surrounded(npos)) {
-							update_block_mesh(npos);
-						}
+		// Update meshes
+		Vector3i ndir;
+		for (ndir.z = -1; ndir.z < 2; ++ndir.z) {
+			for (ndir.x = -1; ndir.x < 2; ++ndir.x) {
+				for (ndir.y = -1; ndir.y < 2; ++ndir.y) {
+					Vector3i npos = block_pos + ndir;
+					// TODO What if the map is really composed of empty blocks?
+					if (_map->is_block_surrounded(npos)) {
+						update_block_mesh(npos);
 					}
 				}
 			}
-			//update_block_mesh(block_pos);
 		}
+		//update_block_mesh(block_pos);
 
 		// Pop request
 		_block_update_queue.resize(_block_update_queue.size() - 1);
@@ -126,11 +127,11 @@ void VoxelTerrain::update_blocks() {
 }
 
 void VoxelTerrain::update_block_mesh(Vector3i block_pos) {
-	Ref<VoxelBlock> block_ref = _map->get_block_ref(block_pos);
-	if (block_ref.is_null()) {
+	VoxelBlock * block = _map->get_block(block_pos);
+	if (block == NULL) {
 		return;
 	}
-	if (block_ref->voxels->is_uniform(0) && block_ref->voxels->get_voxel(0, 0, 0, 0) == 0) {
+	if (block->voxels->is_uniform(0) && block->voxels->get_voxel(0, 0, 0, 0) == 0) {
 		return;
 	}
 
@@ -161,14 +162,14 @@ void VoxelTerrain::update_block_mesh(Vector3i block_pos) {
 	// Build mesh (that part is the most CPU-intensive)
 	Ref<Mesh> mesh = _mesher->build(nbuffer, 0);
 
-	MeshInstance * mesh_instance = block_ref->get_mesh_instance(*this);
+	MeshInstance * mesh_instance = block->get_mesh_instance(*this);
 	if (mesh_instance == NULL) {
 		// Create and spawn mesh
 		mesh_instance = memnew(MeshInstance);
 		mesh_instance->set_mesh(mesh);
 		mesh_instance->set_translation(VoxelMap::block_to_voxel(block_pos).to_vec3());
 		add_child(mesh_instance);
-		block_ref->mesh_instance_path = mesh_instance->get_path();
+		block->mesh_instance_path = mesh_instance->get_path();
 	}
 	else {
 		// Update mesh
@@ -190,6 +191,8 @@ void VoxelTerrain::_bind_methods() {
 
 	ObjectTypeDB::bind_method(_MD("get_block_update_count"), &VoxelTerrain::get_block_update_count);
 	ObjectTypeDB::bind_method(_MD("get_mesher:VoxelMesher"), &VoxelTerrain::get_mesher);
+
+	ObjectTypeDB::bind_method(_MD("get_map:VoxelMap"), &VoxelTerrain::get_map);
 
 	// TODO Make those two static in VoxelMap?
 	ObjectTypeDB::bind_method(_MD("voxel_to_block", "voxel_pos"), &VoxelTerrain::_voxel_to_block_binding);

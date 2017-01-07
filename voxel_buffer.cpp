@@ -24,7 +24,7 @@ void VoxelBuffer::create(int sx, int sy, int sz) {
 			Channel & channel = _channels[i];
 			if (channel.data) {
 				// TODO Optimize with realloc
-				delete_channel(i, _size);
+				delete_channel(i);
 				create_channel(i, new_size);
 			}
 		}
@@ -36,19 +36,26 @@ void VoxelBuffer::clear() {
 	for (unsigned int i = 0; i < MAX_CHANNELS; ++i) {
 		Channel & channel = _channels[i];
 		if (channel.data) {
-			delete_channel(i, _size);
+			delete_channel(i);
 		}
 	}
 }
 
 void VoxelBuffer::clear_channel(unsigned int channel_index, int clear_value) {
 	ERR_FAIL_INDEX(channel_index, MAX_CHANNELS);
-	delete_channel(channel_index, _size);
+	if(_channels[channel_index].data)
+		delete_channel(channel_index);
 	_channels[channel_index].defval = clear_value;
 }
 
+void VoxelBuffer::set_default_values(uint16_t values[VoxelBuffer::MAX_CHANNELS]) {
+	for(unsigned int i = 0; i < MAX_CHANNELS; ++i) {
+		_channels[i].defval = values[i];
+	}
+}
+
 int VoxelBuffer::get_voxel(int x, int y, int z, unsigned int channel_index) const {
-	ERR_FAIL_INDEX_V(channel_index,  MAX_CHANNELS, 0);
+	ERR_FAIL_INDEX_V(channel_index, MAX_CHANNELS, 0);
 
 	const Channel & channel = _channels[channel_index];
 
@@ -106,29 +113,29 @@ void VoxelBuffer::fill_area(int defval, Vector3i min, Vector3i max, unsigned int
 			create_channel(channel_index, _size);
 	}
 
-    Vector3i pos;
-    for (pos.z = min.z; pos.z < max.z; ++pos.z) {
-        for (pos.x = min.x; pos.x < max.x; ++pos.x) {
-            unsigned int dst_ri = index(pos.x, pos.y + min.y, pos.z);
-        	std::fill_n(&channel.data[dst_ri], area_size.y, defval);
-        }
-    }
+	Vector3i pos;
+	for (pos.z = min.z; pos.z < max.z; ++pos.z) {
+		for (pos.x = min.x; pos.x < max.x; ++pos.x) {
+			unsigned int dst_ri = index(pos.x, pos.y + min.y, pos.z);
+			std::fill_n(&channel.data[dst_ri], area_size.y, defval);
+		}
+	}
 }
 
 bool VoxelBuffer::is_uniform(unsigned int channel_index) {
 	ERR_FAIL_INDEX_V(channel_index, MAX_CHANNELS, true);
 
-    Channel & channel = _channels[channel_index];
-    if (channel.data == NULL)
-        return true;
-    
-    uint16_t voxel = channel.data[0];
-    unsigned int volume = get_volume();
-    for (unsigned int i = 0; i < volume; ++i) {
-        if (channel.data[i] != voxel) {
-            return false;
-        }
-    }
+	Channel & channel = _channels[channel_index];
+	if (channel.data == NULL)
+		return true;
+
+	uint16_t voxel = channel.data[0];
+	unsigned int volume = get_volume();
+	for (unsigned int i = 0; i < volume; ++i) {
+		if (channel.data[i] != voxel) {
+			return false;
+		}
+	}
 
 	return true;
 }
@@ -155,7 +162,7 @@ void VoxelBuffer::copy_from(const VoxelBuffer & other, unsigned int channel_inde
 		memcpy(channel.data, other_channel.data, get_volume() * sizeof(uint16_t));
 	}
 	else if(channel.data) {
-		delete_channel(channel_index, _size);
+		delete_channel(channel_index);
 	}
 
 	channel.defval = other_channel.defval;
@@ -204,7 +211,6 @@ void VoxelBuffer::copy_from(const VoxelBuffer & other, Vector3i src_min, Vector3
 			for (pos.z = 0; pos.z < area_size.z; ++pos.z) {
 				for (pos.x = 0; pos.x < area_size.x; ++pos.x) {
 					unsigned int dst_ri = index(pos.x + dst_min.x, pos.y + dst_min.y, pos.z + dst_min.z);
-					
 					std::fill_n(&channel.data[dst_ri], area_size.y, other_channel.defval);
 				}
 			}
@@ -223,8 +229,9 @@ void VoxelBuffer::create_channel_noinit(int i, Vector3i size) {
 	channel.data = (uint16_t*)memalloc(volume * sizeof(uint16_t));
 }
 
-void VoxelBuffer::delete_channel(int i, Vector3i size) {
+void VoxelBuffer::delete_channel(int i) {
 	Channel & channel = _channels[i];
+	ERR_FAIL_COND(channel.data == NULL);
 	memfree(channel.data);
 	channel.data = NULL;
 }
