@@ -30,6 +30,10 @@ class VoxelIllumination: public Reference {
 			LIGHT_MARKING = 15
 		};
 
+		_FORCE_INLINE_ Light () {
+			value = 0;
+		}
+
 		_FORCE_INLINE_ Light (int light) {
 			value = uint8_t(light & 0x0000000f);
 		}
@@ -40,6 +44,13 @@ class VoxelIllumination: public Reference {
 
 		Light (const Light &light) {
 			value = light.value;
+		}
+
+		Light& operator= (const Light &other){
+			if (this != &other) {
+				value = other.value;
+			}
+			return *this;
 		}
 
 		_FORCE_INLINE_ Light diminish() {
@@ -76,7 +87,6 @@ class VoxelIllumination: public Reference {
 			return value != rhs.value;
 		}
 
-
 	};
 public:
 	VoxelIllumination();
@@ -92,19 +102,22 @@ public:
         _map = map;
     }
 
-	void spread_ambient_light(unsigned int solid_channel, unsigned int light_channel,
-			Set<Vector3i> & from_nodes,
-			Map<Vector3i, VoxelBlock*> & modified_blocks, int recursion_countdown);
+	void spread_ambient_light(unsigned int solid_channel, unsigned int light_channel, Set<Vector3i> & from_nodes,
+			Set<Vector3i> & modified_blocks, int recursion_countdown);
 
+	void remove_ambient_light(unsigned int solid_channel, unsigned int light_channel, Map<Vector3i, Light> & from_nodes,
+			Set<Vector3i> & light_sources, Set<Vector3i> & modified_blocks, int recursion_countdown);
 protected:
 
     static void _bind_methods();
 
 
 private:
-	void _spread_ambient_light_binding(unsigned int solid_channel,
-			unsigned int light_channel, const DVector<Vector3>& from_nodes,
-			Dictionary  modified_blocks);
+    DVector<Vector3> _spread_ambient_light_binding(unsigned int solid_channel,
+			unsigned int light_channel, const DVector<Vector3>& from_nodes);
+
+    DVector<Vector3> _remove_ambient_light_binding(unsigned int solid_channel,
+			unsigned int light_channel, const DVector<Vector3>& from_nodes);
 };
 
 #endif /* VOXEL_ILLUMINATION_H_ */
